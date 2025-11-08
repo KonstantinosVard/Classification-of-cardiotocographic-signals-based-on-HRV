@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-# General building block for the ContextualUNet1D and the Generator
+# General building block for the ContextualUNet1D 
+# and the Generator (no longer with us)
 class DoubleConv(nn.Module):
     """Two convolution blocks: Conv -> BatchNorm -> ReLU -> Conv -> BatchNorm -> ReLU"""
     
@@ -95,5 +97,52 @@ class ContextualUNet1D(nn.Module):
             
             # Process concatenated features
             x = conv(x)
+
+        return self.outc(x)     
         
-        return self.outc(x)
+
+class WindowAE(nn.Module):
+    """
+    Simple Autoencoder for fixed-size windows (10 timeframes * 2 channels).
+    """
+    def __init__(self, window_size=10, in_channels=2, latent_dim=4):
+        super().__init__()
+        self.window_size = window_size
+        self.in_channels = in_channels
+        self.latent_dim = latent_dim
+        
+        input_size = in_channels * window_size  # 2*10 = 20
+        
+        # Encoder: Compress window to latent space
+        self.encoder = nn.Sequential(
+            nn.Flatten(),  # (batch, 2, 10) -> (batch, 20)
+            nn.Linear(input_size, 12),
+            nn.ReLU(),
+            nn.Linear(12, 8),
+            nn.ReLU(),
+            nn.Linear(8, latent_dim) # Direct to latent vector z
+        )
+        
+        # Decoder: Reconstruct window from latent
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim, 8),
+            nn.ReLU(),
+            nn.Linear(8, 12),
+            nn.ReLU(),
+            nn.Linear(12, input_size)
+        )
+        
+    def encode(self, x):
+        """Encode window to a single latent vector z."""
+        return self.encoder(x)
+    
+    def decode(self, z):
+        """Decode latent to reconstructed window."""
+        h = self.decoder(z)
+        return h.view(-1, self.in_channels, self.window_size)
+    
+    def forward(self, x):
+        """Full forward pass: encode -> decode."""
+        z = self.encode(x)
+        recon = self.decode(z)
+        return recon, z

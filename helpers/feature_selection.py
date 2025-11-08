@@ -4,15 +4,10 @@ import pandas as pd
 from sklearn.feature_selection import SelectKBest
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.feature_selection import RFE, RFECV
-from sklearn.metrics import accuracy_score, balanced_accuracy_score, recall_score, confusion_matrix, make_scorer
+from sklearn.metrics import accuracy_score, make_scorer, recall_score
 
 RANDOM_STATE = 42
-
-def specificity_score(y_true, y_pred):
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
-    return tn / (tn + fp)
-
-specificity = make_scorer(specificity_score, pos_label=0)
+specificity = make_scorer(recall_score, pos_label=0)
 
 def remove_correlated_features(X, threshold=0.7):
     """
@@ -105,6 +100,7 @@ def evaluate_with_statistical_selection(X, y, score_func, n_features,
         return results
         
     except Exception as e:
+        # Statistical selection always worked in practise
         print(f"Error in statistical selection: {e}")
         return {
             'accuracy_mean': np.nan,

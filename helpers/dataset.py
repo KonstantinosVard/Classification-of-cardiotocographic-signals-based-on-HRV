@@ -8,14 +8,6 @@ class InpaintingDataset(Dataset):
                  fhr_mean=None, fhr_std=None, uc_mean=None, uc_std=None):
         """
         Dataset that randomly masks portions of signals for inpainting training.
-        
-        Args:
-            segments: List of clean signal segments
-            mean_mask_percentage: Average size of each individual mask block (as % of signal)
-            std_mask_percentage: Variation in mask block sizes
-            min_clip: Minimum total % of signal to mask
-            max_clip: Maximum total % of signal to mask
-            fhr_mean, fhr_std, uc_mean, uc_std: Stats for normalization (auto-calculated if None)
         """
         self.segments = segments
         self.mean_mask_percentage = mean_mask_percentage
@@ -92,3 +84,25 @@ class InpaintingDataset(Dataset):
         input_tensor = torch.from_numpy(corrupted).float()
         
         return input_tensor, target
+
+
+class WindowDataset(Dataset):
+    '''
+    Extract Windows from Signals
+    '''
+    def __init__(self, signals, window_size, stride):
+        self.windows = []
+        # signals is now a list of dicts {"fhr":..., "uc":...}
+        for signal_data in signals:
+            fhr = signal_data["fhr"]
+            uc = signal_data["uc"]
+            seq_len = len(fhr)
+            for i in range(0, seq_len - window_size + 1, stride):
+                window = np.stack([fhr[i:i+window_size], uc[i:i+window_size]], axis=0)
+                self.windows.append(window)
+    
+    def __len__(self):
+        return len(self.windows)
+    
+    def __getitem__(self, idx):
+        return torch.FloatTensor(self.windows[idx])

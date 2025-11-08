@@ -3,6 +3,9 @@ from models.definitions import ContextualUNet1D
 from helpers.zero_handlers import drop_long_zero_regions, find_long_zero_runs
 import numpy as np
 import torch.nn.functional as F
+from tqdm import tqdm
+from helpers.dataset import WindowDataset
+from torch.utils.data import DataLoader
 
 def load_best_ae_and_stats(model_path, device):
     """Load trained ContextualUNet1D and normalization stats."""
@@ -97,3 +100,57 @@ def drop_long_then_autoencoder(signal_fhr, signal_uc, model, stats, device, cuto
     # Step 3: Run autoencoder on trimmed signal
     reconstructed = autoencoder_inpaint(trimmed_fhr, trimmed_uc, model, stats, device)
     return reconstructed
+
+
+def ae_loss(recon, x):
+    """Standard AE loss: reconstruction (MSE)."""
+    recon_loss = F.mse_loss(recon, x, reduction='mean')
+    return recon_loss
+
+def train(loader, model, optimizer, epochs, device):
+    """Train AE on windows from normal signals."""
+    model.train()
+    print(f"Training on {len(loader.dataset)} windows...")
+    
+    for epoch in range(epochs):
+        total_loss = 0
+        
+        for windows in tqdm(loader, desc=f"Epoch {epoch+1}/{epochs}"):
+            windows = windows.to(device)
+            
+            # Forward pass (simpler output)
+            recon, z = model(windows)
+            loss = ae_loss(recon, windows)
+            
+            # Backward pass
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            
+            total_loss += loss.item()
+        
+        avg_loss = total_loss / len(loader)
+        print(f"  Reconstruction Loss: {avg_loss:.4f}")
+
+def get_signal_recon_error(model, signal_data, window_size, stride, batch_size, device):
+    """
+    Calculates the average reconstruction error (MSE) for an entire signal.
+    """
+    model.eval()
+    
+    dataset = WindowDataset([signal_data], window_size, stride)
+    if len(dataset) == 0:
+        return 0.0  # Return 0 error if signal is empty
+        
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    
+    total_loss = 0
+    with torch.no_grad():
+        for windows in loader:
+            windows = windows.to(device)
+            recon, _ = model(windows) 
+            loss = ae_loss(recon, windows)
+            total_loss += loss.item()
+            
+    # Return the average loss per batch for this signal
+    return total_loss / len(loader)
