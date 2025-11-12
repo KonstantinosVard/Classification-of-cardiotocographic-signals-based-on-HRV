@@ -92,7 +92,6 @@ class WindowDataset(Dataset):
     '''
     def __init__(self, signals, window_size, stride):
         self.windows = []
-        # signals is now a list of dicts {"fhr":..., "uc":...}
         for signal_data in signals:
             fhr = signal_data["fhr"]
             uc = signal_data["uc"]

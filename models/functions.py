@@ -102,6 +102,8 @@ def drop_long_then_autoencoder(signal_fhr, signal_uc, model, stats, device, cuto
     return reconstructed
 
 
+# anomally detection AE related functions 
+
 def ae_loss(recon, x):
     """Standard AE loss: reconstruction (MSE)."""
     recon_loss = F.mse_loss(recon, x, reduction='mean')
