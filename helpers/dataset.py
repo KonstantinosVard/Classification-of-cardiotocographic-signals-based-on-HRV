@@ -89,6 +89,7 @@ class InpaintingDataset(Dataset):
 class WindowDataset(Dataset):
     '''
     Extract Windows from Signals
+    returns a list that contains n*10 windows for each signal
     '''
     def __init__(self, signals, window_size, stride):
         self.windows = []
