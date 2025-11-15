@@ -1,4 +1,7 @@
 __pycache__/
 data/
+plots/
+*.odt
 *.pth
-*.pdf
+Προγραμματιστική Άσκηση.pdf
+*.sh
