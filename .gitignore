@@ -6,8 +6,6 @@ plots/
 *.csv
 *.pth
 Προγραμματιστική Άσκηση.pdf
-*.sh
 create_datasets.py
 scripts/
 results/
-
